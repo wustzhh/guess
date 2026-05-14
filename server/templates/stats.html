@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}战绩 - 猜人物游戏{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1>{{ username }} 的战绩</h1>
+  <p>所有已结束的对局记录</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+  <div class="stat-item gold">
+    <div class="number">{{ stat['total'] or 0 }}</div>
+    <div class="label">总场次</div>
+  </div>
+  <div class="stat-item win">
+    <div class="number">{{ stat['wins'] or 0 }}</div>
+    <div class="label">猜中</div>
+  </div>
+  <div class="stat-item loss">
+    <div class="number">{{ stat['losses'] or 0 }}</div>
+    <div class="label">放弃</div>
+  </div>
+  <div class="stat-item accent">
+    <div class="number">{{ stat['win_rate'] or '-' }}{% if stat['win_rate'] is not none %}%{% endif %}</div>
+    <div class="label">猜中率</div>
+  </div>
+  <div class="stat-item gold">
+    <div class="number">{{ "%.1f"|format(stat['avg_rounds']) if stat['avg_rounds'] else '-' }}</div>
+    <div class="label">平均轮次</div>
+  </div>
+  <div class="stat-item win">
+    <div class="number">{{ stat['best'] or '-' }}</div>
+    <div class="label">最佳纪录</div>
+  </div>
+</div>
+
+<!-- Category Breakdown -->
+{% if cat_stats %}
+<div class="cat-tags" style="margin-bottom:1.5rem;">
+  {% for cat in cat_stats %}
+    <div class="cat-tag">{{ cat['category'] }} <span>{{ cat['wins'] }}/{{ cat['total'] }}</span></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Game History -->
+<div class="card">
+  <div class="card-title">对局记录</div>
+  {% if games|length == 0 %}
+    <div class="empty">还没有对局记录</div>
+  {% else %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>时间</th>
+            <th>分类</th>
+            <th>答案</th>
+            <th>提问数</th>
+            <th>总轮次</th>
+            <th>结果</th>
+            <th>详情</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in games %}
+          <tr>
+            <td>{{ g['id'] }}</td>
+            <td>{{ g['created_at'][:16] if g['created_at'] else '-' }}</td>
+            <td>{{ g['category'] }}</td>
+            <td><strong>{{ g['character_name'] }}</strong></td>
+            <td>{{ g['questions'] }}</td>
+            <td>{{ g['total_rounds'] }}</td>
+            <td>
+              {% if g['result'] == 'guessed' %}
+                <span class="badge win">猜中</span>
+              {% elif g['result'] == 'gave_up' %}
+                <span class="badge lose">放弃</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if g.get('qa_log_parsed') %}
+                <span style="cursor:pointer;color:var(--gold);font-size:0.85rem;"
+                      onclick="toggleLog({{ g['id'] }})">展开</span>
+                <div id="log-{{ g['id'] }}" style="display:none;margin-top:0.4rem;background:var(--bg);padding:0.5rem;border-radius:6px;font-size:0.8rem;line-height:1.5;">
+                  {% for item in g['qa_log_parsed'] %}
+                    <div style="color:var(--gold)">Q{{ loop.index }}: {{ item.q }}</div>
+                    <div style="color:var(--green);margin-bottom:0.3rem;">A: {{ item.a }}</div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <span style="color:var(--text-dim)">-</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+function toggleLog(id) {
+  const el = document.getElementById('log-' + id);
+  if (!el) return;
+  const toggleEl = el.previousElementSibling;
+  if (el.style.display === 'none' || el.style.display === '') {
+    el.style.display = 'block';
+    toggleEl.textContent = '收起';
+  } else {
+    el.style.display = 'none';
+    toggleEl.textContent = '展开';
+  }
+}
+</script>
+
+{% endblock %}

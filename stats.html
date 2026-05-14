@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>猜人物游戏 - 战绩总览</title>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --card: #1a1a2e;
+    --card-hover: #222240;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --gold: #f5c518;
+    --green: #4ecca3;
+    --red: #e94560;
+    --text: #eaeaea;
+    --text-dim: #8888aa;
+    --border: #2a2a4a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem;
+  }
+  .header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+  .header h1 {
+    font-size: 2.2rem;
+    background: linear-gradient(135deg, var(--gold), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.3rem;
+  }
+  .header p { color: var(--text-dim); font-size: 0.95rem; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.2rem;
+    margin-bottom: 2.5rem;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(233, 69, 96, 0.15);
+  }
+  .stat-card .number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.3rem;
+  }
+  .stat-card .label {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .stat-card.win .number { color: var(--green); }
+  .stat-card.loss .number { color: var(--red); }
+  .stat-card.gold .number { color: var(--gold); }
+  .stat-card.accent .number { color: var(--accent); }
+
+  .section-title {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--accent);
+    display: inline-block;
+  }
+
+  .category-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-bottom: 2.5rem;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .cat-tag {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 0.5rem 1.2rem;
+    font-size: 0.9rem;
+  }
+  .cat-tag span { color: var(--gold); font-weight: 600; }
+
+  .table-wrap {
+    max-width: 1100px;
+    margin: 0 auto 2rem;
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  thead th {
+    background: var(--accent2);
+    padding: 0.9rem 1rem;
+    text-align: left;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+  }
+  tbody td {
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.95rem;
+  }
+  tbody tr:hover { background: var(--card-hover); }
+  tbody tr:last-child td { border-bottom: none; }
+  .badge {
+    display: inline-block;
+    padding: 0.2rem 0.7rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .badge.win { background: rgba(78, 204, 163, 0.15); color: var(--green); }
+  .badge.lose { background: rgba(233, 69, 96, 0.15); color: var(--red); }
+
+  .log-toggle {
+    cursor: pointer;
+    color: var(--gold);
+    font-size: 0.85rem;
+    user-select: none;
+    text-decoration: underline;
+  }
+  .log-toggle:hover { color: var(--accent); }
+  .log-detail {
+    display: none;
+    margin-top: 0.5rem;
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 0.8rem;
+    font-size: 0.85rem;
+    line-height: 1.6;
+  }
+  .log-detail.show { display: block; }
+  .log-detail .q { color: var(--gold); }
+  .log-detail .a { color: var(--green); }
+
+  .empty {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-dim);
+    font-size: 1.1rem;
+  }
+
+  .footer {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>猜人物游戏 · 战绩总览</h1>
+  <p>看看你的推理实力如何</p>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card gold">
+    <div class="number">2</div>
+    <div class="label">总场次</div>
+  </div>
+  <div class="stat-card win">
+    <div class="number">2</div>
+    <div class="label">猜中</div>
+  </div>
+  <div class="stat-card loss">
+    <div class="number">0</div>
+    <div class="label">放弃</div>
+  </div>
+  <div class="stat-card accent">
+    <div class="number">100.0%</div>
+    <div class="label">猜中率</div>
+  </div>
+  <div class="stat-card gold">
+    <div class="number">8.0</div>
+    <div class="label">平均轮次</div>
+  </div>
+  <div class="stat-card win">
+    <div class="number">8</div>
+    <div class="label">最佳纪录</div>
+  </div>
+</div>
+
+<div class="category-tags">
+  <div class="cat-tag">三国 <span>2/2</span></div>
+</div>
+
+<div class="table-wrap">
+  <h2 class="section-title">对局记录</h2>
+  
+  <table><thead><tr><th>#</th><th>时间</th><th>分类</th><th>答案</th><th>提问数</th><th>总轮次</th><th>结果</th><th>详情</th></tr></thead><tbody>
+  <tr>
+    <td>2</td>
+    <td>2026-05-14 10:37</td>
+    <td>三国</td>
+    <td><strong>徐庶</strong></td>
+    <td>7</td>
+    <td>8</td>
+    <td><span class="badge win">猜中</span></td>
+    <td><span class="log-toggle" onclick="toggleLog(2)">展开</span><div class="log-detail" id="log-2"><div><span class="q">Q1: 魏蜀吴阵营的吗？</span><br><span class="a">A: 是</span></div><div><span class="q">Q2: 是魏国的吗？</span><br><span class="a">A: 不是</span></div><div><span class="q">Q3: 是蜀的吗？</span><br><span class="a">A: 是</span></div><div><span class="q">Q4: 偏文还是偏武？</span><br><span class="a">A: 是也不是，谋士型</span></div><div><span class="q">Q5: 诸葛亮吗？</span><br><span class="a">A: 不是</span></div><div><span class="q">Q6: 从一而终吗？</span><br><span class="a">A: 不是</span></div><div><span class="q">Q7: 刘备入主益州前加入的吗？</span><br><span class="a">A: 是</span></div><div><span class="q">Q8: 徐庶！</span><br><span class="a">A: 正确！</span></div></div></td>
+  </tr><tr>
+    <td>1</td>
+    <td>2026-05-14 10:18</td>
+    <td>三国</td>
+    <td><strong>陆逊</strong></td>
+    <td>7</td>
+    <td>8</td>
+    <td><span class="badge win">猜中</span></td>
+    <td><span class="log-toggle" onclick="toggleLog(1)">展开</span><div class="log-detail" id="log-1"><div><span class="q">Q1: 死于234年之前还是之后？</span><br><span class="a">A: 之后</span></div><div><span class="q">Q2: 是蜀国的吗？</span><br><span class="a">A: 不是</span></div><div><span class="q">Q3: 是魏国的吗？</span><br><span class="a">A: 不是</span></div><div><span class="q">Q4: 那他是吴国的？</span><br><span class="a">A: 是</span></div><div><span class="q">Q5: 文将还是武将？</span><br><span class="a">A: 是也不是，文武兼备</span></div><div><span class="q">Q6: 上战场砍人吗？</span><br><span class="a">A: 不是，运筹帷幄型</span></div><div><span class="q">Q7: 当过大都督吗？</span><br><span class="a">A: 是</span></div><div><span class="q">Q8: 陆逊！</span><br><span class="a">A: 正确！</span></div></div></td>
+  </tr>
+  </tbody></table>
+</div>
+
+<div class="footer">
+  猜人物游戏 · 战绩系统 · 数据存储于 game_stats.db
+</div>
+
+<script>
+function toggleLog(id) {
+  var el = document.getElementById('log-' + id);
+  el.classList.toggle('show');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}首页 - 猜人物游戏{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1>欢迎回来，{{ username }}</h1>
+  <p>你的推理战绩一览</p>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+  <div class="stat-item gold">
+    <div class="number">{{ stat['total'] or 0 }}</div>
+    <div class="label">总场次</div>
+  </div>
+  <div class="stat-item win">
+    <div class="number">{{ stat['wins'] or 0 }}</div>
+    <div class="label">猜中</div>
+  </div>
+  <div class="stat-item loss">
+    <div class="number">{{ stat['losses'] or 0 }}</div>
+    <div class="label">放弃</div>
+  </div>
+  <div class="stat-item accent">
+    <div class="number">{% if stat['total'] and stat['total'] > 0 %}{{ "%.0f"|format(stat['wins']/stat['total']*100) }}%{% else %}-{% endif %}</div>
+    <div class="label">猜中率</div>
+  </div>
+  <div class="stat-item gold">
+    <div class="number">{{ "%.1f"|format(stat['avg_rounds']) if stat['avg_rounds'] else '-' }}</div>
+    <div class="label">平均轮次</div>
+  </div>
+  <div class="stat-item win">
+    <div class="number">{{ stat['best'] or '-' }}</div>
+    <div class="label">最佳纪录</div>
+  </div>
+</div>
+
+<!-- Start Game -->
+<div class="card">
+  <div class="card-title">开始新游戏</div>
+  {% if active %}
+    <p style="color:var(--gold);margin-bottom:0.8rem;">你有一个进行中的游戏</p>
+    <div style="display:flex;gap:0.8rem;">
+      <a href="{{ url_for('game_play') }}" class="btn btn-primary">继续游戏</a>
+      <form method="POST" action="{{ url_for('game_start') }}" style="display:inline;">
+        <input type="hidden" name="category" value="三国">
+        <button type="submit" class="btn btn-outline">开始新局</button>
+      </form>
+    </div>
+  {% else %}
+    <p style="color:var(--text-dim);margin-bottom:1rem;">选择分类开始一局猜测</p>
+    <form method="POST" action="{{ url_for('game_start') }}">
+      <input type="hidden" name="category" value="三国">
+      <button type="submit" class="btn btn-primary">三国人物</button>
+    </form>
+  {% endif %}
+</div>
+
+<!-- Recent Games -->
+<div class="card">
+  <div class="card-title">最近对局</div>
+  {% if games|length == 0 %}
+    <div class="empty">还没有对局记录，快去玩一局吧！</div>
+  {% else %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>时间</th>
+            <th>分类</th>
+            <th>答案</th>
+            <th>轮次</th>
+            <th>结果</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in games %}
+          <tr>
+            <td>{{ g['created_at'][:16] if g['created_at'] else '-' }}</td>
+            <td>{{ g['category'] }}</td>
+            <td><strong>{{ g['character_name'] }}</strong></td>
+            <td>{{ g['total_rounds'] }}</td>
+            <td>
+              {% if g['result'] == 'guessed' %}
+                <span class="badge win">猜中</span>
+              {% elif g['result'] == 'gave_up' %}
+                <span class="badge lose">放弃</span>
+              {% else %}
+                <span class="badge playing">进行中</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

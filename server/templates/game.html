@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}游戏中 - 猜人物{% endblock %}
+{% block content %}
+
+<div class="game-container">
+  <div class="page-header" style="text-align:center;">
+    <h1>猜人物</h1>
+    <p>分类：{{ game['category'] }} | 第 <span id="round-counter">{{ game['total_rounds'] }}</span> 轮</p>
+  </div>
+
+  <!-- Chat Area -->
+  <div class="chat-area" id="chat-area">
+    <div class="chat-msg bot">
+      我已经想好了一个{{ game['category'] }}的人物，开始提问吧！
+    </div>
+    {% for item in qa_log %}
+      <div class="chat-msg user">{{ item.q }}</div>
+      <div class="chat-msg bot {% if item.a == '猜对了！' %}correct{% elif item.a == '不是' %}wrong{% endif %}">{{ item.a }}</div>
+    {% endfor %}
+  </div>
+
+  <!-- Game Over Result -->
+  <div id="game-result" {% if game['result'] != 'playing' %}style="display:block;"{% else %}style="display:none;"{% endif %}>
+    {% if game['result'] == 'guessed' %}
+      <div class="bio-card">
+        <h2>恭喜猜中！</h2>
+        <p>{{ character_bio }}</p>
+      </div>
+    {% elif game['result'] == 'gave_up' %}
+      <div class="bio-card">
+        <h2>你放弃了！答案是：{{ character_name }}</h2>
+        <p>{{ character_bio }}</p>
+      </div>
+    {% endif %}
+    {% if qa_log %}
+      <div class="bio-card">
+        <div style="margin-bottom:1rem;font-size:0.9rem;color:var(--gold);">总计 {{ qa_log|length }} 轮</div>
+        <div class="table-wrap"><table style="font-size:0.85rem;">
+          <thead><tr><th>#</th><th>提问</th><th>回答</th></tr></thead>
+          <tbody>
+            {% for item in qa_log %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ item.q }}</td>
+              <td {% if item.a == '猜对了！' %}style="color:var(--green);font-weight:700;"{% elif item.a == '不是' %}style="color:var(--red);"{% endif %}>{{ item.a }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table></div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Input Area -->
+  <div id="input-area" class="chat-input-area" {% if game['result'] != 'playing' %}style="display:none;"{% endif %}>
+    <input type="text" id="question-input" class="form-control"
+           placeholder="输入你的问题（是/不是 类型）..." autofocus autocomplete="off">
+    <button onclick="askQuestion()" class="btn btn-primary" id="ask-btn">提问</button>
+    <button onclick="giveUp()" class="btn btn-outline" id="giveup-btn">放弃</button>
+  </div>
+
+  <!-- Game Over Actions -->
+  <div id="game-over-actions" class="game-over-actions" {% if game['result'] != 'playing' %}style="display:flex;"{% else %}style="display:none;"{% endif %}>
+    <form method="POST" action="{{ url_for('game_start') }}">
+      <input type="hidden" name="category" value="三国">
+      <button type="submit" class="btn btn-primary">再来一局</button>
+    </form>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline">返回首页</a>
+  </div>
+</div>
+
+<script>
+const chatArea = document.getElementById('chat-area');
+const questionInput = document.getElementById('question-input');
+const askBtn = document.getElementById('ask-btn');
+const inputArea = document.getElementById('input-area');
+const gameResult = document.getElementById('game-result');
+const gameOverActions = document.getElementById('game-over-actions');
+const roundCounter = document.getElementById('round-counter');
+
+let gameOver = {{ 'true' if game['result'] != 'playing' else 'false' }};
+
+function addMessage(text, type) {
+  const msg = document.createElement('div');
+  msg.className = 'chat-msg ' + type;
+  msg.textContent = text;
+  chatArea.appendChild(msg);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function buildScorecard(qaLog, title, isWin) {
+  let html = '<div class="bio-card"><h2>' + title + '</h2>';
+  html += '<div style="margin:1rem 0;font-size:0.9rem;color:var(--gold);">总计 ' + qaLog.length + ' 轮</div>';
+  html += '<div class="table-wrap"><table style="font-size:0.85rem;">';
+  html += '<thead><tr><th>#</th><th>提问</th><th>回答</th></tr></thead><tbody>';
+  for (let i = 0; i < qaLog.length; i++) {
+    const qa = qaLog[i];
+    const aClass = qa.a === '猜对了！' ? 'color:var(--green);font-weight:700;' :
+                   qa.a === '不是' ? 'color:var(--red);' : '';
+    html += '<tr><td>' + (i + 1) + '</td>';
+    html += '<td>' + qa.q + '</td>';
+    html += '<td style="' + aClass + '">' + qa.a + '</td></tr>';
+  }
+  html += '</tbody></table></div></div>';
+  return html;
+}
+
+async function askQuestion() {
+  if (gameOver) return;
+  const question = questionInput.value.trim();
+  if (!question) return;
+
+  addMessage(question, 'user');
+  questionInput.value = '';
+  questionInput.disabled = true;
+  askBtn.disabled = true;
+  askBtn.textContent = '...';
+
+  try {
+    const formData = new FormData();
+    formData.append('question', question);
+    const resp = await fetch('/game/ask', { method: 'POST', body: formData });
+    const data = await resp.json();
+
+    if (data.error) {
+      addMessage(data.error, 'bot unknown');
+    } else {
+      let typeClass = 'bot';
+      if (data.type === 'correct') typeClass = 'bot correct';
+      else if (data.type === 'wrong_guess') typeClass = 'bot wrong';
+      else if (data.type === 'unknown') typeClass = 'bot unknown';
+
+      addMessage(data.text, typeClass);
+      roundCounter.textContent = data.rounds;
+
+      if (data.game_over) {
+        gameOver = true;
+        inputArea.style.display = 'none';
+        gameOverActions.style.display = 'flex';
+
+        const scorecard = buildScorecard(data.qa_log || [],
+          data.type === 'correct' ? '恭喜猜中！' : '游戏结束',
+          data.type === 'correct');
+
+        if (data.character_bio) {
+          gameResult.innerHTML = '<div class="bio-card"><h2>' +
+            (data.type === 'correct' ? '恭喜猜中！' : '游戏结束') + '</h2><p>' +
+            data.character_bio + '</p></div>' + scorecard;
+        } else {
+          gameResult.innerHTML = scorecard;
+        }
+        gameResult.style.display = 'block';
+      }
+    }
+  } catch (e) {
+    addMessage('网络错误，请重试', 'bot unknown');
+  }
+
+  if (!gameOver) {
+    questionInput.disabled = false;
+    askBtn.disabled = false;
+    askBtn.textContent = '提问';
+    questionInput.focus();
+  }
+}
+
+async function giveUp() {
+  if (gameOver) return;
+  if (!confirm('确定要放弃吗？')) return;
+
+  inputArea.style.display = 'none';
+  gameOverActions.style.display = 'flex';
+
+  try {
+    const resp = await fetch('/game/giveup', { method: 'POST' });
+    const data = await resp.json();
+
+    gameOver = true;
+    roundCounter.textContent = data.rounds;
+
+    let scorecard = '';
+    if (data.qa_log && data.qa_log.length > 0) {
+      scorecard = buildScorecard(data.qa_log, '', false);
+    }
+
+    gameResult.innerHTML = '<div class="bio-card"><h2>你放弃了！答案是：' +
+      data.character_name + '</h2><p>' + data.character_bio + '</p></div>' + scorecard;
+    gameResult.style.display = 'block';
+  } catch (e) {
+    addMessage('网络错误', 'bot unknown');
+  }
+}
+
+questionInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') askQuestion();
+});
+</script>
+
+{% endblock %}
