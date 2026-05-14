@@ -71,6 +71,8 @@
             <th>答案</th>
             <th>轮次</th>
             <th>结果</th>
+            <th>评价</th>
+            <th>详情</th>
           </tr>
         </thead>
         <tbody>
@@ -89,6 +91,21 @@
                 <span class="badge playing">进行中</span>
               {% endif %}
             </td>
+            <td style="color:var(--gold);font-size:0.85rem;">{{ g.get('rating', '') }}</td>
+            <td>
+              {% if g.get('qa_log_parsed') %}
+                <span style="cursor:pointer;color:var(--gold);font-size:0.85rem;"
+                      onclick="toggleLog({{ g['id'] }})" id="toggle-{{ g['id'] }}">展开</span>
+                <div id="log-{{ g['id'] }}" style="display:none;margin-top:0.4rem;background:var(--bg);padding:0.5rem;border-radius:6px;font-size:0.8rem;line-height:1.5;">
+                  {% for item in g['qa_log_parsed'] %}
+                    <div style="color:var(--gold)">Q{{ loop.index }}: {{ item.q }}</div>
+                    <div style="color:var(--green);margin-bottom:0.3rem;">A: {{ item.a }}</div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <span style="color:var(--text-dim)">-</span>
+              {% endif %}
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -96,5 +113,20 @@
     </div>
   {% endif %}
 </div>
+
+<script>
+function toggleLog(id) {
+  const el = document.getElementById('log-' + id);
+  if (!el) return;
+  const toggleEl = document.getElementById('toggle-' + id);
+  if (el.style.display === 'none' || el.style.display === '') {
+    el.style.display = 'block';
+    if (toggleEl) toggleEl.textContent = '收起';
+  } else {
+    el.style.display = 'none';
+    if (toggleEl) toggleEl.textContent = '展开';
+  }
+}
+</script>
 
 {% endblock %}

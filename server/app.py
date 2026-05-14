@@ -137,10 +137,20 @@ def dashboard():
     ).fetchone()
     conn.close()
 
+    game_list = []
+    for g in games:
+        d = dict(g)
+        try:
+            d["qa_log_parsed"] = json.loads(d["qa_log"]) if d["qa_log"] else []
+        except (json.JSONDecodeError, TypeError):
+            d["qa_log_parsed"] = []
+        d["rating"] = _rating(d)
+        game_list.append(d)
+
     return render_template(
         "dashboard.html",
         username=session["username"],
-        games=games,
+        games=game_list,
         stat=stat,
         active=active,
     )
@@ -415,6 +425,23 @@ def create_user(username, password):
     conn.commit()
     conn.close()
     return True, f"用户 {username} 创建成功"
+
+
+def _rating(game):
+    """Generate a rating comment based on round count and result."""
+    if game.get("result") == "gave_up":
+        return "虽败犹荣"
+    rounds = game.get("total_rounds", 0)
+    if rounds <= 4:
+        return "神机妙算！"
+    elif rounds <= 7:
+        return "思路清晰！"
+    elif rounds <= 10:
+        return "稳扎稳打"
+    elif rounds <= 15:
+        return "锲而不舍"
+    else:
+        return "终得正果"
 
 
 if __name__ == "__main__":
