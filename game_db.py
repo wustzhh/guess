@@ -29,6 +29,14 @@ def init_db():
             log TEXT
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS current_game (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            category TEXT NOT NULL,
+            character_name TEXT NOT NULL,
+            started_at TEXT DEFAULT (datetime('now', 'localtime'))
+        )
+    """)
     conn.commit()
     conn.close()
     print(f"Database initialized: {DB_PATH}")
@@ -350,6 +358,35 @@ def _render_row(index, game):
   </tr>"""
 
 
+def set_current_character(category, character_name):
+    init_db()
+    conn = get_conn()
+    conn.execute("DELETE FROM current_game")
+    conn.execute("INSERT INTO current_game (id, category, character_name) VALUES (1, ?, ?)", (category, character_name))
+    conn.commit()
+    conn.close()
+    print(f"Current character set: {category} - {character_name}")
+
+
+def get_current_character():
+    init_db()
+    conn = get_conn()
+    row = conn.execute("SELECT category, character_name FROM current_game WHERE id = 1").fetchone()
+    conn.close()
+    if row:
+        return {"category": row["category"], "character_name": row["character_name"]}
+    return None
+
+
+def clear_current_game():
+    init_db()
+    conn = get_conn()
+    conn.execute("DELETE FROM current_game")
+    conn.commit()
+    conn.close()
+    print("Current game cleared.")
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage:")
@@ -357,6 +394,9 @@ def main():
         print("  python game_db.py save <category> <character> <questions> <rounds> <result> [log_json]")
         print("  python game_db.py export")
         print("  python game_db.py stats")
+        print("  python game_db.py new-game <category> <character>")
+        print("  python game_db.py current")
+        print("  python game_db.py end-game")
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -372,8 +412,16 @@ def main():
         questions = sys.argv[4]
         rounds = sys.argv[5]
         result = sys.argv[6]
-        log_json = sys.argv[7] if len(sys.argv) > 7 else "[]"
+        log_json = "[]"
+        if len(sys.argv) > 7 and sys.argv[7] == "--log-file" and len(sys.argv) > 8:
+            with open(sys.argv[8], "r", encoding="utf-8") as f:
+                log_json = f.read().strip()
+        elif not sys.stdin.isatty():
+            log_json = sys.stdin.read().strip()
+        elif len(sys.argv) > 7:
+            log_json = sys.argv[7]
         save_game(category, character, questions, rounds, result, log_json)
+        clear_current_game()
     elif cmd == "export":
         generate_html()
     elif cmd == "stats":
@@ -384,6 +432,19 @@ def main():
         for g in games:
             emoji = "O" if g["result"] == "guessed" else "X"
             print(f"  [{emoji}] {g['played_at'][:16]} | {g['category']} | {g['character_name']} | {g['total_rounds']} rounds")
+    elif cmd == "new-game":
+        if len(sys.argv) < 4:
+            print("Error: new-game requires category and character")
+            sys.exit(1)
+        set_current_character(sys.argv[2], sys.argv[3])
+    elif cmd == "current":
+        g = get_current_character()
+        if g:
+            print(f"Current: {g['category']} - {g['character_name']}")
+        else:
+            print("No current game.")
+    elif cmd == "end-game":
+        clear_current_game()
     else:
         print(f"Unknown command: {cmd}")
         sys.exit(1)
