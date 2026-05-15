@@ -181,8 +181,15 @@ createApp({
       var wins = 0;
       raw.forEach(function(g) {
         var log = [];
-        try { log = JSON.parse(g.log || '[]'); } catch(e) {}
-        var bestRounds = g.total_rounds;
+        try {
+          var parsed = JSON.parse(g.log || '[]');
+          log = parsed.map(function(item) {
+            return {
+              q: item.q || item.question || '',
+              a: item.a || item.answer || ''
+            };
+          });
+        } catch(e) {}
         games.push({
           id: g.id,
           played_at: g.played_at,
